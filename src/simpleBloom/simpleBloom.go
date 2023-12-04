@@ -1,38 +1,57 @@
 package simpleBloom
 
 import (
-	"github.com/twmb/murmur3"
+	"github.com/spaolacci/murmur3"
 	"hash"
 )
+import "math/rand"
 
-func newBloom() []hash.Hash32 {
+type bloom struct {
+	bitArray []bool
+	hash     []hash.Hash32
+}
+
+const defaultHashFunctionCount = 2
+
+func NewBloom(size int, seeds []int) *bloom {
 	// Initialize the bloom filter
-	seeds := []int{1, 2, 3, 4, 5}
-	hash := make([]hash.Hash32, len(seeds))
-	for _, seed := range seeds {
-		hash = append(hash, murmur3.SeedNew32(uint32(seed)))
+	bloomFilter := &bloom{bitArray: make([]bool, size)}
+
+	if seeds == nil || len(seeds) == 0 {
+		seeds = make([]int, defaultHashFunctionCount)
+		for i := 0; i < defaultHashFunctionCount; i++ {
+			seeds[i] = rand.Int()
+		}
 	}
-	return hash
+
+	hash := make([]hash.Hash32, 0)
+	for _, seed := range seeds {
+		hash = append(hash, murmur3.New32WithSeed(uint32(seed)))
+	}
+
+	bloomFilter.hash = hash
+
+	return bloomFilter
 }
 
 // Simple bloom filter implementation using hash32 functions
-func addElement(bitArray []bool, element string, hash []hash.Hash32) {
-	bitSize := len(bitArray)
-	for _, h := range hash {
+func AddElement(bloomFilter *bloom, element string) {
+	bitSize := len(bloomFilter.bitArray)
+	for _, h := range bloomFilter.hash {
 		h.Write([]byte(element))
-		bitArray[h.Sum32()%uint32(bitSize)] = true
+		bloomFilter.bitArray[h.Sum32()%uint32(bitSize)] = true
 		h.Reset()
 	}
 }
 
-func checkElement(bitArray []bool, element string, hash []hash.Hash32) bool {
-	bitSize := len(bitArray)
-	for _, h := range hash {
+func CheckElement(bloomFilter *bloom, element string) bool {
+	bitSize := len(bloomFilter.bitArray)
+	for _, h := range bloomFilter.hash {
 		_, err := h.Write([]byte(element))
 		if err != nil {
 			return false
 		}
-		if !bitArray[h.Sum32()%uint32(bitSize)] {
+		if !bloomFilter.bitArray[h.Sum32()%uint32(bitSize)] {
 			return false
 		}
 		h.Reset()
