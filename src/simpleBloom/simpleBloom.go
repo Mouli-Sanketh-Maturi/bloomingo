@@ -35,6 +35,7 @@ func NewBloom(size int, seeds []int) *bloom {
 }
 
 // Simple bloom filter implementation using hash32 functions
+
 func AddElement(bloomFilter *bloom, element string) {
 	bitSize := len(bloomFilter.bitArray)
 	for _, h := range bloomFilter.hash {
